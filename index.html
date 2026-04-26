@@ -57,7 +57,7 @@
       min-height: 100vh;
       transition: background var(--transition), color var(--transition);
       position: relative;
-      z-index: 2147483643;
+      z-index: auto;
       overflow: visible;
     }
 
@@ -66,7 +66,7 @@
       display: flex;
       min-height: 100vh;
       position: relative;
-      z-index: 2147483645;
+      z-index: auto;
       isolation: isolate;
     }
 
@@ -81,7 +81,7 @@
       position: fixed;
       top: 0; left: 0;
       height: 100vh;
-      z-index: 2147483648;
+      z-index: 100;
       transition: transform 0.3s ease;
     }
 
@@ -269,7 +269,7 @@
       margin-bottom: 28px;
       box-shadow: var(--shadow);
       position: relative;
-      z-index: 2147483647;
+      z-index: auto;
     }
 
     .add-row {
@@ -277,7 +277,7 @@
       gap: 10px;
       align-items: center;
       position: relative;
-      z-index: 2147483647;
+      z-index: auto;
       overflow: visible;
     }
 
@@ -337,7 +337,7 @@
       align-items: center;
       gap: 6px;
       position: relative;
-      z-index: 2147483647;
+      z-index: auto;
     }
     .cat-picker-btn:hover { border-color: var(--primary); }
     .cat-picker-btn .arrow { margin-left: auto; font-size: 10px; color: var(--text-3); }
@@ -350,7 +350,7 @@
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       box-shadow: var(--shadow-lg);
-      z-index: 2147483647;
+      z-index: auto;
       min-width: 160px;
       max-height: 260px;
       overflow-y: auto;
@@ -580,7 +580,7 @@
       position: fixed;
       inset: 0;
       background: rgba(0,0,0,0.45);
-      z-index: 200;
+      z-index: 500;
       justify-content: center;
       align-items: center;
       padding: 20px;
@@ -679,7 +679,7 @@
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       box-shadow: var(--shadow-lg);
-      z-index: 9999;
+      z-index: 50;
       min-width: 140px;
       overflow: hidden;
       display: none;
@@ -712,7 +712,7 @@
       .add-row { flex-wrap: wrap; }
       .add-input { min-width: 0; }
       .cat-picker-btn { width: 100%; }
-      .cat-picker-list { position: fixed; top: auto; bottom: 0; left: 0; right: 0; border-radius: 12px 12px 0 0; max-height: 50vh; z-index: 2147483647; isolation: isolate; }
+      .cat-picker-list { position: fixed; top: auto; bottom: 0; left: 0; right: 0; border-radius: 12px 12px 0 0; max-height: 50vh; z-index: 100; isolation: isolate; }
       .cat-name { max-width: 120px; }
     }
 
@@ -794,7 +794,7 @@
 </div>
 
 <!-- Portal: 移动分类下拉浮层（避免 stacking context 遮挡） -->
-<div id="move-dropdown-portal" style="position:fixed;z-index:2147483647;display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);min-width:160px;overflow:hidden;isolation:isolate;"></div>
+<div id="move-dropdown-portal" style="position:fixed;z-index:100;display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);min-width:160px;overflow:hidden;isolation:isolate;"></div>
 
 <!-- Category Modal (add/edit) -->
 <div class="modal-overlay" id="catModal">
