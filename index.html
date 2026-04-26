@@ -793,6 +793,9 @@
   </main>
 </div>
 
+<!-- Portal: 移动分类下拉浮层（避免 stacking context 遮挡） -->
+<div id="move-dropdown-portal" style="position:fixed;z-index:2147483647;display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);min-width:160px;overflow:hidden;isolation:isolate;"></div>
+
 <!-- Category Modal (add/edit) -->
 <div class="modal-overlay" id="catModal">
   <div class="modal">
@@ -862,7 +865,7 @@
     // Close dropdowns on outside click
     document.addEventListener('click', e => {
       if (!e.target.closest('.move-dropdown') && !e.target.closest('.cat-picker-list') && !e.target.closest('.cat-picker-btn')) {
-        document.querySelectorAll('.move-dropdown').forEach(d => d.classList.remove('show'));
+        closeMoveDropdown();
         document.querySelectorAll('.cat-picker-list').forEach(d => d.classList.remove('open'));
         document.querySelectorAll('.cat-picker-btn').forEach(b => b.classList.remove('open'));
       }
@@ -1096,21 +1099,13 @@
       `;
     }
 
-    const moveOpts = t.completed ? '' : categories.filter(c => c.id !== t.categoryId).map(c => `
-      <div class="move-option"
-           onclick="event.stopPropagation(); moveTodo('${t.id}', '${c.id}')">
-        ${c.icon} ${escHtml(c.name)}
-      </div>
-    `).join('') || '<div style="padding:8px 12px;font-size:0.82rem;color:var(--text-3)">无其他分类</div>';
-
     return `
       <div class="todo-item${t.completed ? ' completed' : ''}" data-id="${t.id}">
         <div class="checkbox${t.completed ? ' checked' : ''}" onclick="toggleTodo('${t.id}')"></div>
         <div class="todo-body">
           <div class="todo-text" onclick="startEditTodo('${t.id}')">${escHtml(t.title)}</div>
           <div class="todo-meta">
-            <span class="todo-cat-tag" onclick="event.stopPropagation(); toggleMoveDropdown('${t.id}')">${catIcon} ${escHtml(catName)} ▼</span>
-            <div class="move-dropdown" id="move-${t.id}">${moveOpts}</div>
+            <span class="todo-cat-tag" onclick="event.stopPropagation(); toggleMoveDropdown('${t.id}', event)">${catIcon} ${escHtml(catName)} ▼</span>
             <span class="todo-date">${dateStr}</span>
           </div>
         </div>
@@ -1122,24 +1117,54 @@
     `;
   }
 
-  function toggleMoveDropdown(todoId) {
-    document.querySelectorAll('.move-dropdown').forEach(d => d.classList.remove('show'));
-    const el = document.getElementById(`move-${todoId}`);
-    if (!el) return;
-    const isShown = el.classList.contains('show');
-    if (isShown) {
-      el.classList.remove('show');
+  let openMoveTodoId = null;
+
+  function toggleMoveDropdown(todoId, event) {
+    if (event) event.stopPropagation();
+    const portal = document.getElementById('move-dropdown-portal');
+    if (!portal) return;
+
+    // If clicking the same item, close
+    if (openMoveTodoId === todoId && portal.style.display !== 'none') {
+      portal.style.display = 'none';
+      openMoveTodoId = null;
       return;
     }
-    // Position relative to the cat-tag inside this item
+    openMoveTodoId = todoId;
+
+    // Build options HTML
+    const t = todos.find(x => x.id === todoId);
+    const optsHtml = categories.filter(c => c.id !== t.categoryId).map(c => `
+      <div class="move-option" onclick="moveTodo('${todoId}', '${c.id}'); closeMoveDropdown();">
+        ${c.icon} ${escHtml(c.name)}
+      </div>
+    `).join('') || '<div style="padding:8px 12px;font-size:0.82rem;color:var(--text-3)">无其他分类</div>';
+
+    portal.innerHTML = optsHtml;
+
+    // Position below the category tag of this item
     const item = document.querySelector(`[data-id="${todoId}"]`);
     const catTag = item ? item.querySelector('.todo-cat-tag') : null;
     if (catTag) {
       const rect = catTag.getBoundingClientRect();
-      el.style.top = (rect.bottom + 4) + 'px';
-      el.style.left = rect.left + 'px';
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      let top = rect.bottom + 4;
+      let left = rect.left;
+      // Clamp: if overflow right, flip left
+      if (left + 160 > vw) left = Math.max(4, vw - 164);
+      // If overflow bottom, flip up
+      if (top + 260 > vh) top = rect.top - 260 - 4;
+      portal.style.top = top + 'px';
+      portal.style.left = left + 'px';
     }
-    el.classList.add('show');
+    portal.style.display = 'block';
+  }
+
+  function closeMoveDropdown() {
+    const portal = document.getElementById('move-dropdown-portal');
+    if (portal) portal.style.display = 'none';
+    openMoveTodoId = null;
   }
 
   function escHtml(s) {
