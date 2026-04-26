@@ -62,31 +62,31 @@
       "id": "cat_touzi",
       "name": "投资",
       "icon": "💰",
-      "order": 6
+      "order": 1
     },
     {
       "id": "cat_dianshiju",
       "name": "电视剧",
       "icon": "🎬",
-      "order": 7
+      "order": 4
     },
     {
       "id": "cat_dianying",
       "name": "电影",
       "icon": "🎥",
-      "order": 4
+      "order": 5
     },
     {
       "id": "cat_shuji",
       "name": "书籍",
       "icon": "📚",
-      "order": 5
+      "order": 6
     },
     {
       "id": "cat_youxi",
       "name": "游戏",
       "icon": "🎮",
-      "order": 1
+      "order": 7
     },
     {
       "id": "cat_mofe1yiy0pt47",
