@@ -1,20 +1,6 @@
 {
   "todos": [
     {
-      "id": "mofitrggmq6m5xtk9",
-      "title": "测试任务",
-      "completed": false,
-      "categoryId": "cat_default",
-      "createdAt": "2026-04-26T08:43:20.512Z"
-    },
-    {
-      "id": "mofisllkxuifvx7qs",
-      "title": "测试任务",
-      "completed": false,
-      "categoryId": "cat_default",
-      "createdAt": "2026-04-26T08:42:26.264Z"
-    },
-    {
       "id": "e4b300f905f04ca5",
       "title": "简化生活及数码产品，减轻包袱",
       "completed": false,
