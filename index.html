@@ -840,6 +840,7 @@
   let editingTodoId = null;
   let selectedIcon = '📋';
   let selectedAddCatId = localStorage.getItem('lastUsedCatId') || 'cat_default';
+  let defaultCatId = null; // resolved after categories load
 
   const PRESET_ICONS = [
     '📋','📌','📍','💰','💎','💳','🎬','🎥','🎞️','📺',
@@ -903,6 +904,15 @@
       const newTodos = await todosRes.json();
       categories.splice(0, categories.length, ...newCats);
       todos.splice(0, todos.length, ...newTodos);
+      // Resolve default category id
+      const stored = localStorage.getItem('lastUsedCatId');
+      defaultCatId = newCats.find(c => c.name === '默认')?.id || newCats[0]?.id || null;
+      if (stored && newCats.find(c => c.id === stored)) {
+        selectedAddCatId = stored;
+      } else {
+        selectedAddCatId = defaultCatId;
+        localStorage.setItem('lastUsedCatId', defaultCatId);
+      }
       renderCats();
       initCatPicker();
       render();
@@ -988,9 +998,12 @@
     // Sync: also set the add-form category to the selected one
     if (catId) {
       selectedAddCatId = catId;
-      localStorage.setItem('lastUsedCatId', catId);
-      renderCatPickerLabel();
+    } else {
+      // "All" → reset to default category
+      selectedAddCatId = defaultCatId;
     }
+    localStorage.setItem('lastUsedCatId', selectedAddCatId);
+    renderCatPickerLabel();
     renderCats();
     render();
     closeSidebar();

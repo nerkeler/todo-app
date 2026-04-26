@@ -97,6 +97,12 @@
       "name": "其他",
       "icon": "✔️",
       "order": 8
+    },
+    {
+      "id": "cat_mofjjo42w3p92",
+      "name": "默认",
+      "icon": "📋",
+      "order": 9
     }
   ]
 }
