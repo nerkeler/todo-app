@@ -985,6 +985,12 @@
     const cat = catId ? categories.find(c => c.id === catId) : null;
     document.getElementById('currentCatTitle').innerHTML =
       cat ? `${cat.icon} ${escHtml(cat.name)}` : '📋 全部';
+    // Sync: also set the add-form category to the selected one
+    if (catId) {
+      selectedAddCatId = catId;
+      localStorage.setItem('lastUsedCatId', catId);
+      renderCatPickerLabel();
+    }
     renderCats();
     render();
     closeSidebar();
