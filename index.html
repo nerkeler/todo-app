@@ -345,12 +345,12 @@
 
     /* Category dropdown list */
     .cat-picker-list {
-      position: absolute;
+      position: fixed;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       box-shadow: var(--shadow-lg);
-      z-index: auto;
+      z-index: 100;
       min-width: 160px;
       max-height: 260px;
       overflow-y: auto;
@@ -1020,16 +1020,27 @@
         ${c.icon} ${escHtml(c.name)}
       </div>
     `).join('');
-    // Position below button — use getBoundingClientRect for viewport-relative coords
-    const rect = btn.getBoundingClientRect();
+    // Move to body for Portal behavior (avoids stacking context issues)
+    if (list.parentElement !== document.body) {
+      document.body.appendChild(list);
+    }
+    list.style.position = 'fixed';
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    // Debug info in console for troubleshooting
-    console.log('[分类选择器] viewport:', vw, 'x', vh, '| button rect:', JSON.stringify(rect));
-    // Use position fixed with computed viewport coords
-    list.style.top = (rect.bottom + 4) + 'px';
-    list.style.left = rect.left + 'px';
-    list.style.transform = '';
+    if (vw <= 768) {
+      // Mobile: pin to bottom of screen
+      list.style.left = '0';
+      list.style.right = '0';
+      list.style.top = 'auto';
+      list.style.bottom = '0';
+    } else {
+      // Desktop: appear below button
+      const rect = btn.getBoundingClientRect();
+      list.style.left = rect.left + 'px';
+      list.style.right = 'auto';
+      list.style.top = (rect.bottom + 4) + 'px';
+      list.style.bottom = 'auto';
+    }
     btn.classList.add('open');
     list.classList.add('open');
   }
