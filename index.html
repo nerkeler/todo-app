@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的待办</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --surface: #ffffff;
+      --surface-hover: #f7f8fa;
+      --primary: #0058d4;
+      --primary-light: #e8f0fe;
+      --primary-dark: #0043a8;
+      --accent: #00bf6f;
+      --danger: #d13438;
+      --danger-light: #fde7e9;
+      --text: #1a1a1a;
+      --text-2: #5f5f5f;
+      --text-3: #999999;
+      --border: #e2e2e8;
+      --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.05);
+      --shadow-lg: 0 4px 24px rgba(0,0,0,0.12);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --transition: 0.2s ease;
+      --sidebar-w: 440px;
+    }
+
+    [data-theme="dark"] {
+      --bg: #111114;
+      --surface: #1c1c20;
+      --surface-hover: #252529;
+      --primary: #4da3ff;
+      --primary-light: #1a2d44;
+      --primary-dark: #80bbff;
+      --accent: #00d084;
+      --danger: #ff6b6b;
+      --danger-light: #2a1a1a;
+      --text: #e8e8ed;
+      --text-2: #a0a0a8;
+      --text-3: #606068;
+      --border: #2e2e35;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.25);
+      --shadow-lg: 0 4px 24px rgba(0,0,0,0.5);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      transition: background var(--transition), color var(--transition);
+      position: relative;
+      z-index: 2147483643;
+      overflow: visible;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: flex;
+      min-height: 100vh;
+      position: relative;
+      z-index: 2147483645;
+      isolation: isolate;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: fixed;
+      top: 0; left: 0;
+      height: 100vh;
+      z-index: 100;
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar-header {
+      padding: 20px 16px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .sidebar-close {
+      display: none;
+      width: 30px; height: 30px;
+      border: none; background: transparent;
+      color: var(--text-2); font-size: 18px;
+      cursor: pointer; border-radius: 6px;
+    }
+
+    /* Category list */
+    .cat-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .cat-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: var(--text-2);
+      transition: all var(--transition);
+      position: relative;
+      user-select: none;
+    }
+
+    .cat-item:hover { background: var(--surface-hover); color: var(--text); }
+
+    .cat-item.active {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .cat-item .cat-icon { font-size: 1rem; flex-shrink: 0; }
+    .cat-item .cat-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cat-item .cat-count {
+      font-size: 0.72rem;
+      background: var(--border);
+      color: var(--text-3);
+      padding: 1px 6px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+    .cat-item.active .cat-count { background: var(--primary); color: #fff; }
+
+    /* Category actions — shown on hover */
+    .cat-actions {
+      display: none;
+      gap: 2px;
+      margin-left: auto;
+    }
+    .cat-item:hover .cat-actions { display: flex; }
+    .cat-item:hover .cat-count { display: none; }
+
+    .cat-act-btn {
+      width: 22px; height: 22px;
+      border: none; background: transparent;
+      color: var(--text-3); font-size: 12px;
+      cursor: pointer; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .cat-act-btn:hover { background: var(--border); color: var(--text); }
+    .cat-act-btn.del:hover { background: var(--danger-light); color: var(--danger); }
+    .cat-act-btn.move:hover { background: var(--primary-light); color: var(--primary); }
+    .cat-act-btn.move.disabled { opacity: 0.2; pointer-events: none; cursor: default; }
+
+    /* Order buttons */
+    .cat-order-btns { display: none; gap: 1px; }
+    .cat-item:hover .cat-order-btns { display: flex; }
+
+    /* All category special */
+    .cat-item.cat-all { font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .cat-item .cat-order-btns { display: none; gap: 1px; }
+    .cat-item:hover .cat-order-btns { display: flex; }
+    .cat-item:hover .cat-count { display: none; }
+
+    /* Divider */
+    .cat-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 6px 10px;
+    }
+
+    /* Add category */
+    .add-cat-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--text-3);
+      transition: all var(--transition);
+      border: none; background: transparent;
+      width: 100%;
+      text-align: left;
+    }
+    .add-cat-btn:hover { background: var(--surface-hover); color: var(--primary); }
+
+    /* Sidebar footer */
+    .sidebar-footer {
+      padding: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Main ── */
+    .main {
+      flex: 1;
+      margin-left: var(--sidebar-w);
+      padding: 28px 32px 80px;
+      max-width: 720px;
+    }
+
+    /* Header */
+    .main-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+
+    .menu-btn {
+      display: none;
+      width: 36px; height: 36px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      color: var(--text-2);
+    }
+
+    .current-cat-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-right { display: flex; align-items: center; gap: 10px; }
+
+    .theme-toggle {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--transition);
+      color: var(--text-2);
+    }
+    .theme-toggle:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* Add card */
+    .add-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 28px;
+      box-shadow: var(--shadow);
+      position: relative;
+      z-index: 2147483646;
+    }
+
+    .add-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      position: relative;
+      z-index: 2147483646;
+      overflow: visible;
+    }
+
+    .add-input {
+      flex: 1;
+      height: 52px;
+      padding: 0 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.95rem;
+      font-family: inherit;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .add-input::placeholder { color: var(--text-3); }
+    .add-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-light);
+    }
+    .add-input.shake { animation: shake 0.35s ease; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+
+    .add-btn {
+      height: 44px; padding: 0 20px;
+      background: var(--primary); color: #fff;
+      border: none; border-radius: var(--radius-sm);
+      font-size: 0.9rem; font-weight: 600;
+      font-family: inherit; cursor: pointer;
+      transition: background var(--transition), transform var(--transition);
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .add-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
+    .add-btn:active { transform: translateY(0); }
+
+    /* Category picker button */
+    .cat-picker-btn {
+      height: 38px;
+      padding: 0 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: border-color 0.2s;
+      min-width: 110px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+      z-index: 2147483647;
+    }
+    .cat-picker-btn:hover { border-color: var(--primary); }
+    .cat-picker-btn .arrow { margin-left: auto; font-size: 10px; color: var(--text-3); }
+    .cat-picker-btn.open { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+
+    /* Category dropdown list */
+    .cat-picker-list {
+      position: absolute;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-lg);
+      z-index: 2147483647;
+      min-width: 160px;
+      max-height: 260px;
+      overflow-y: auto;
+      display: none;
+      isolation: isolate;
+    }
+    .cat-picker-list.open { display: block; }
+    .cat-picker-item {
+      padding: 9px 14px;
+      font-size: 0.88rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.12s;
+    }
+    .cat-picker-item:hover { background: var(--surface-hover); }
+    .cat-picker-item.selected { background: var(--primary-light); color: var(--primary); font-weight: 600; }
+    .cat-picker-item .check { width: 14px; font-size: 11px; }
+
+    /* Stats */
+    .stats-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: var(--text-3);
+      padding: 0 2px;
+    }
+    .stats-row .done-count { color: var(--accent); font-weight: 600; }
+
+    /* Section label */
+    .section-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-3);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 24px 0 10px 2px;
+    }
+
+    /* Todo item */
+    .todo-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .todo-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 13px 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      box-shadow: var(--shadow);
+      transition: all 0.25s ease;
+      animation: fadeSlideIn 0.3s ease;
+    }
+
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .todo-item:hover {
+      border-color: var(--primary);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-1px);
+    }
+
+    .todo-item.completed { opacity: 0.5; }
+    .todo-item.completed:hover { opacity: 0.65; transform: none; }
+
+    .todo-item.deleting { animation: fadeOut 0.22s ease forwards; }
+    @keyframes fadeOut {
+      to { opacity: 0; transform: translateX(-20px); }
+    }
+
+    /* Checkbox */
+    .checkbox {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 1px;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      background: transparent;
+    }
+    .checkbox:hover { border-color: var(--primary); }
+    .checkbox.checked {
+      background: var(--accent); border-color: var(--accent);
+    }
+    .checkbox.checked::after {
+      content: '';
+      width: 5px; height: 9px;
+      border: 2px solid #fff;
+      border-top: none; border-left: none;
+      transform: rotate(45deg) translateY(-1px);
+      display: block;
+    }
+
+    /* Todo body */
+    .todo-body { flex: 1; min-width: 0; }
+
+    .todo-text {
+      font-size: 0.93rem;
+      line-height: 1.5;
+      color: var(--text);
+      word-break: break-word;
+      cursor: pointer;
+    }
+    .todo-item.completed .todo-text {
+      text-decoration: line-through;
+      color: var(--text-3);
+    }
+
+    .todo-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .todo-cat-tag {
+      font-size: 0.7rem;
+      color: var(--primary);
+      background: var(--primary-light);
+      padding: 2px 8px;
+      border-radius: 10px;
+      display: inline-flex; align-items: center; gap: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+      border: none;
+      font-family: inherit;
+    }
+    .todo-cat-tag:hover { background: var(--primary); color: #fff; }
+
+    .todo-meta { position: relative; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+
+    .todo-date {
+      font-size: 0.72rem;
+      color: var(--text-3);
+    }
+
+    /* Todo actions */
+    .todo-actions {
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity var(--transition);
+      flex-shrink: 0;
+    }
+    .todo-item:hover .todo-actions { opacity: 1; }
+
+    .todo-act-btn {
+      width: 26px; height: 26px;
+      border: none; background: transparent;
+      color: var(--text-3); font-size: 13px;
+      cursor: pointer; border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .todo-act-btn:hover { background: var(--border); color: var(--text); }
+    .todo-act-btn.del:hover { background: var(--danger-light); color: var(--danger); }
+    .todo-act-btn.move {
+      font-size: 13px;
+      width: 28px; height: 28px;
+    }
+    .todo-act-btn.move:hover { background: var(--primary-light); color: var(--primary); }
+
+    /* Edit input */
+    .edit-input {
+      width: 100%;
+      border: 1.5px solid var(--primary);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 0.93rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      box-shadow: 0 0 0 3px var(--primary-light);
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-3);
+    }
+    .empty-state .icon { font-size: 2.6rem; margin-bottom: 12px; opacity: 0.35; }
+    .empty-state p { font-size: 0.95rem; }
+
+    /* Progress */
+    .progress-card {
+      margin-top: 32px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+    }
+    .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .progress-label { font-size: 0.82rem; color: var(--text-2); font-weight: 500; }
+    .progress-pct { font-size: 0.82rem; color: var(--accent); font-weight: 700; }
+    .progress-track { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-radius: 3px;
+      transition: width 0.5s ease;
+      width: 0%;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      margin-top: 48px;
+      font-size: 0.75rem;
+      color: var(--text-3);
+    }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 200;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .modal-overlay.show { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: var(--shadow-lg);
+      animation: modalIn 0.2s ease;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-close {
+      width: 28px; height: 28px;
+      border: none; background: transparent;
+      font-size: 18px; cursor: pointer;
+      color: var(--text-3); border-radius: 6px;
+    }
+    .modal-close:hover { background: var(--border); color: var(--text); }
+
+    .modal-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .modal-label { font-size: 0.82rem; color: var(--text-2); font-weight: 500; }
+
+    .modal-input {
+      height: 40px;
+      padding: 0 12px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      font-family: inherit;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      width: 100%;
+    }
+    .modal-input:focus { border-color: var(--primary); }
+
+    /* Icon grid */
+    .icon-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      padding: 2px;
+    }
+    .icon-option {
+      width: 36px; height: 36px;
+      border: 1.5px solid transparent;
+      border-radius: 6px;
+      background: var(--bg);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .icon-option:hover { border-color: var(--primary); background: var(--primary-light); }
+    .icon-option.selected { border-color: var(--primary); background: var(--primary-light); }
+
+    .modal-actions { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
+    .modal-btn {
+      height: 36px; padding: 0 18px;
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem; font-weight: 600;
+      font-family: inherit; cursor: pointer;
+      transition: all var(--transition);
+      border: none;
+    }
+    .modal-btn.cancel { background: var(--border); color: var(--text-2); }
+    .modal-btn.cancel:hover { background: var(--text-3); color: #fff; }
+    .modal-btn.danger { background: var(--danger); color: #fff; }
+    .modal-btn.danger:hover { opacity: 0.85; }
+    .modal-btn.primary { background: var(--primary); color: #fff; }
+    .modal-btn.primary:hover { background: var(--primary-dark); }
+
+    /* Category move dropdown */
+    .move-dropdown {
+      position: fixed;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-lg);
+      z-index: 9999;
+      min-width: 140px;
+      overflow: hidden;
+      display: none;
+    }
+    .move-dropdown.show { display: block; }
+    .move-option {
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+      transition: background 0.15s;
+    }
+    .move-option:hover { background: var(--surface-hover); }
+    .move-option.disabled { opacity: 0.4; pointer-events: none; }
+
+    /* Move button wrapper */
+
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+        width: min(320px, 85vw);
+      }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-close { display: flex; align-items: center; justify-content: center; }
+      .main { margin-left: 0; padding: 20px 16px 80px; }
+      .menu-btn { display: flex; align-items: center; justify-content: center; }
+      .current-cat-title { font-size: 1.25rem; }
+      .add-row { flex-wrap: wrap; }
+      .add-input { min-width: 0; }
+      .cat-picker-btn { width: 100%; }
+      .cat-picker-list { position: fixed; top: auto; bottom: 0; left: 0; right: 0; border-radius: 12px 12px 0 0; max-height: 50vh; z-index: 2147483647; }
+      .cat-name { max-width: 120px; }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">📋 分类</span>
+      <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+    </div>
+    <div class="cat-list" id="catList"></div>
+    <div class="sidebar-footer">
+      <button class="add-cat-btn" onclick="openAddCatModal()">
+        <span>＋</span> 新增分类
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+    <div class="main-header">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="menu-btn" onclick="openSidebar()">☰</button>
+        <div class="current-cat-title" id="currentCatTitle">📋 全部</div>
+      </div>
+      <div class="header-right">
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+      </div>
+    </div>
+
+    <!-- Add card -->
+    <div class="add-card">
+      <div class="add-row">
+        <input class="add-input" type="text" id="todoInput" placeholder="输入待办事项…" maxlength="200" autocomplete="off">
+        <button class="cat-picker-btn" id="catPickerBtn" onclick="toggleCatPicker(event)" type="button">
+          <span id="catPickerLabel">📋 默认</span>
+          <span class="arrow">▼</span>
+        </button>
+        <div class="cat-picker-list" id="catPickerList"></div>
+        <button class="add-btn" onclick="addTodo()">添加</button>
+      </div>
+      <div class="stats-row">
+        <span>已完成 <span class="done-count" id="doneCount">0</span> 项</span>
+        <span>共 <span id="totalCount">0</span> 项</span>
+      </div>
+    </div>
+
+    <!-- Lists -->
+    <div id="pendingSection">
+      <div class="section-label">待完成</div>
+      <section class="todo-list" id="todoList"></section>
+    </div>
+    <div id="doneSection" style="display:none">
+      <div class="section-label">已完成</div>
+      <section class="todo-list" id="doneList"></section>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-card" id="progressCard" style="display:none">
+      <div class="progress-header">
+        <span class="progress-label">完成进度</span>
+        <span class="progress-pct" id="progressPct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <div class="footer">局域网多端同步 · 数据本地存储</div>
+  </main>
+</div>
+
+<!-- Category Modal (add/edit) -->
+<div class="modal-overlay" id="catModal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="catModalTitle">新增分类</span>
+      <button class="modal-close" onclick="closeCatModal()">✕</button>
+    </div>
+    <div class="modal-row">
+      <label class="modal-label">分类名称</label>
+      <input class="modal-input" type="text" id="catNameInput" placeholder="输入分类名称" maxlength="20">
+    </div>
+    <div class="modal-row">
+      <label class="modal-label">选择图标</label>
+      <div class="icon-grid" id="iconGrid"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeCatModal()">取消</button>
+      <button class="modal-btn danger" id="delCatBtn" style="display:none" onclick="confirmDeleteCat()">删除分类</button>
+      <button class="modal-btn primary" id="saveCatBtn" onclick="saveCatModal()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal">
+    <div class="modal-title">确认删除</div>
+    <p style="font-size:0.9rem;color:var(--text-2);margin-bottom:18px" id="confirmMsg"></p>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeConfirmModal()">取消</button>
+      <button class="modal-btn danger" onclick="doDeleteCat()">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = '/api';
+  let categories = [];
+  let todos = [];
+  let activeCatId = null; // null = 全部
+  let editingCatId = null;
+  let editingTodoId = null;
+  let selectedIcon = '📋';
+  let selectedAddCatId = localStorage.getItem('lastUsedCatId') || 'cat_default';
+
+  const PRESET_ICONS = [
+    '📋','📌','📍','💰','💎','💳','🎬','🎥','🎞️','📺',
+    '📚','📖','📕','🎮','🕹️','🎯','⚽','🏀','🎸','🎨',
+    '🍳','☕','🍺','🍜','🏠','🚗','✈️','💼','🏢','📱',
+    '💻','🔧','🔬','📊','📈','📉','🧘','🏃','🌱','🌸',
+    '🎁','⭐','🔥','💡','⚡','🎉','🎊','👀','✔️','❌',
+    '🗑️','✏️','📝','📧','🛒','🎒','🏋️','🧗','🚴','🏊',
+    '🎵','🎤','🎬','📷','🎨','🖼️','🌅','🏞️','🌺','🍀',
+    '🌻','🌹','🍎','🍕','🎂','🍦','🧃','🍷','🏨','🛵'
+  ];
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
+    loadData();
+    initIconGrid();
+    document.getElementById('todoInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') addTodo();
+    });
+    document.getElementById('catNameInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') saveCatModal();
+    });
+    // Close dropdowns on outside click
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.move-dropdown') && !e.target.closest('.cat-picker-list') && !e.target.closest('.cat-picker-btn')) {
+        document.querySelectorAll('.move-dropdown').forEach(d => d.classList.remove('show'));
+        document.querySelectorAll('.cat-picker-list').forEach(d => d.classList.remove('open'));
+        document.querySelectorAll('.cat-picker-btn').forEach(b => b.classList.remove('open'));
+      }
+    });
+  });
+
+  /* ── Theme ── */
+  function initTheme() {
+    const saved = localStorage.getItem('todo-theme') || 'light';
+    setTheme(saved);
+  }
+  function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem('todo-theme', t);
+    document.getElementById('themeToggle').textContent = t === 'dark' ? '☀️' : '🌙';
+  }
+  function toggleTheme() {
+    const cur = document.documentElement.getAttribute('data-theme') || 'light';
+    setTheme(cur === 'dark' ? 'light' : 'dark');
+  }
+
+  /* ── Sidebar ── */
+  function openSidebar() { document.getElementById('sidebar').classList.add('open'); }
+  function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); }
+
+  /* ── Data loading ── */
+  async function loadData() {
+    try {
+      const ts = Date.now();
+      const [catsRes, todosRes] = await Promise.all([
+        fetch(API + '/categories?_=' + ts),
+        fetch(API + '/todos?_=' + ts)
+      ]);
+      const newCats = await catsRes.json();
+      const newTodos = await todosRes.json();
+      categories.splice(0, categories.length, ...newCats);
+      todos.splice(0, todos.length, ...newTodos);
+      renderCats();
+      initCatPicker();
+      render();
+    } catch (e) { console.error(e); }
+  }
+
+  /* ── Render categories (sidebar) ── */
+  function renderCats() {
+    const allCount = todos.length;
+    const catCounts = {};
+    todos.forEach(t => {
+      catCounts[t.categoryId] = (catCounts[t.categoryId] || 0) + 1;
+    });
+
+    const sorted = categories.sort((a, b) => a.order - b.order);
+
+    let html = `
+      <div class="cat-item cat-all${activeCatId === null ? ' active' : ''}" onclick="selectCat(null)">
+        <span class="cat-icon">📋</span>
+        <span class="cat-name">全部</span>
+        <span class="cat-count">${allCount}</span>
+      </div>
+    `;
+
+    html += `<div class="cat-divider"></div>`;
+
+    sorted.forEach((cat, idx) => {
+      const count = catCounts[cat.id] || 0;
+      const canUp = idx > 0;
+      const canDown = idx < sorted.length - 1;
+      html += `
+        <div class="cat-item${activeCatId === cat.id ? ' active' : ''}" onclick="selectCat('${cat.id}')">
+          <span class="cat-icon">${cat.icon}</span>
+          <span class="cat-name">${escHtml(cat.name)}</span>
+          <span class="cat-count">${count}</span>
+          <div class="cat-order-btns">
+            <button class="cat-act-btn move${!canUp ? ' disabled' : ''}"
+                    onclick="event.stopPropagation(); reorderCat('${cat.id}', 'up')"
+                    title="上移">▲</button>
+            <button class="cat-act-btn move${!canDown ? ' disabled' : ''}"
+                    onclick="event.stopPropagation(); reorderCat('${cat.id}', 'down')"
+                    title="下移">▼</button>
+          </div>
+          <div class="cat-actions">
+            <button class="cat-act-btn" onclick="event.stopPropagation(); openEditCatModal('${cat.id}')" title="编辑">✎</button>
+            <button class="cat-act-btn del" onclick="event.stopPropagation(); openDelCatConfirm('${cat.id}')" title="删除">🗑</button>
+          </div>
+        </div>
+      `;
+    });
+
+    document.getElementById('catList').innerHTML = html;
+  }
+
+  async function reorderCat(catId, direction) {
+    const sorted = [...categories].sort((a, b) => a.order - b.order);
+    const idx = sorted.findIndex(c => c.id === catId);
+    if (idx === -1) return;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= sorted.length) return;
+    // Swap orders
+    const tmpOrder = sorted[idx].order;
+    sorted[idx].order = sorted[swapIdx].order;
+    sorted[swapIdx].order = tmpOrder;
+    // Update local state
+    categories = sorted;
+    renderCats();
+    // Persist
+    try {
+      await fetch(API + '/categories/reorder', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: sorted.map(c => c.id) })
+      });
+    } catch (e) { console.error(e); }
+  }
+
+  function selectCat(catId) {
+    activeCatId = catId;
+    const cat = catId ? categories.find(c => c.id === catId) : null;
+    document.getElementById('currentCatTitle').innerHTML =
+      cat ? `${cat.icon} ${escHtml(cat.name)}` : '📋 全部';
+    renderCats();
+    render();
+    closeSidebar();
+  }
+
+  /* ── Category select (native select) ── */
+  function initCatPicker() {
+    renderCatPickerLabel();
+  }
+
+  function renderCatPickerLabel() {
+    const cat = categories.find(c => c.id === selectedAddCatId) || categories[0];
+    const label = document.getElementById('catPickerLabel');
+    if (label && cat) label.textContent = cat.icon + ' ' + cat.name;
+  }
+
+  function toggleCatPicker(e) {
+    if (e) e.stopPropagation();
+    const list = document.getElementById('catPickerList');
+    const btn = document.getElementById('catPickerBtn');
+    if (!list || !btn) return;
+    const isOpen = list.classList.contains('open');
+    if (isOpen) {
+      list.classList.remove('open');
+      btn.classList.remove('open');
+      return;
+    }
+    // Build list
+    list.innerHTML = categories.sort((a, b) => a.order - b.order).map(c => `
+      <div class="cat-picker-item${c.id === selectedAddCatId ? ' selected' : ''}"
+           onclick="selectAddCat('${c.id}')">
+        <span class="check">${c.id === selectedAddCatId ? '✔' : ''}</span>
+        ${c.icon} ${escHtml(c.name)}
+      </div>
+    `).join('');
+    // Position below button — use getBoundingClientRect for viewport-relative coords
+    const rect = btn.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    // Debug info in console for troubleshooting
+    console.log('[分类选择器] viewport:', vw, 'x', vh, '| button rect:', JSON.stringify(rect));
+    // Use position fixed with computed viewport coords
+    list.style.top = (rect.bottom + 4) + 'px';
+    list.style.left = rect.left + 'px';
+    list.style.transform = '';
+    btn.classList.add('open');
+    list.classList.add('open');
+  }
+
+  function selectAddCat(catId) {
+    selectedAddCatId = catId;
+    localStorage.setItem('lastUsedCatId', catId);
+    const list = document.getElementById('catPickerList');
+    const btn = document.getElementById('catPickerBtn');
+    if (list) list.classList.remove('open');
+    if (btn) btn.classList.remove('open');
+    renderCatPickerLabel();
+  }
+
+  /* ── Render todos ── */
+  function render() {
+    let filtered = todos;
+    if (activeCatId !== null) {
+      filtered = todos.filter(t => t.categoryId === activeCatId);
+    }
+    const pending = filtered.filter(t => !t.completed);
+    const completed = filtered.filter(t => t.completed);
+    const total = filtered.length;
+    const done = completed.length;
+
+    document.getElementById('doneCount').textContent = done;
+    document.getElementById('totalCount').textContent = total;
+
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const progCard = document.getElementById('progressCard');
+    if (total > 0) {
+      progCard.style.display = 'block';
+      document.getElementById('progressPct').textContent = pct + '%';
+      document.getElementById('progressFill').style.width = pct + '%';
+    } else {
+      progCard.style.display = 'none';
+    }
+
+    document.getElementById('pendingSection').style.display = total > 0 && pending.length > 0 ? 'block' : 'none';
+    document.getElementById('doneSection').style.display = total > 0 && completed.length > 0 ? 'block' : 'none';
+    document.getElementById('todoList').innerHTML = pending.map(makeTodoItem).join('');
+    document.getElementById('doneList').innerHTML = completed.map(makeTodoItem).join('');
+  }
+
+  function makeTodoItem(t) {
+    const cat = categories.find(c => c.id === t.categoryId);
+    const isEditing = editingTodoId === t.id;
+    const catIcon = cat ? cat.icon : '📋';
+    const catName = cat ? cat.name : '默认';
+    const dateStr = formatDate(t.createdAt);
+
+    if (isEditing) {
+      return `
+        <div class="todo-item" data-id="${t.id}">
+          <div class="checkbox"></div>
+          <div class="todo-body">
+            <input
+              class="edit-input"
+              id="edit-todo-${t.id}"
+              value="${escHtml(t.title)}"
+              maxlength="200"
+              onkeydown="handleTodoEditKey(event, '${t.id}')"
+              onblur="saveTodoEdit('${t.id}')"
+            />
+          </div>
+        </div>
+      `;
+    }
+
+    const moveOpts = t.completed ? '' : categories.filter(c => c.id !== t.categoryId).map(c => `
+      <div class="move-option"
+           onclick="event.stopPropagation(); moveTodo('${t.id}', '${c.id}')">
+        ${c.icon} ${escHtml(c.name)}
+      </div>
+    `).join('') || '<div style="padding:8px 12px;font-size:0.82rem;color:var(--text-3)">无其他分类</div>';
+
+    return `
+      <div class="todo-item${t.completed ? ' completed' : ''}" data-id="${t.id}">
+        <div class="checkbox${t.completed ? ' checked' : ''}" onclick="toggleTodo('${t.id}')"></div>
+        <div class="todo-body">
+          <div class="todo-text" onclick="startEditTodo('${t.id}')">${escHtml(t.title)}</div>
+          <div class="todo-meta">
+            <span class="todo-cat-tag" onclick="event.stopPropagation(); toggleMoveDropdown('${t.id}')">${catIcon} ${escHtml(catName)} ▼</span>
+            <div class="move-dropdown" id="move-${t.id}">${moveOpts}</div>
+            <span class="todo-date">${dateStr}</span>
+          </div>
+        </div>
+        <div class="todo-actions">
+          <button class="todo-act-btn" onclick="startEditTodo('${t.id}')" title="编辑">✎</button>
+          <button class="todo-act-btn del" onclick="deleteTodo('${t.id}')" title="删除">✕</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function toggleMoveDropdown(todoId) {
+    document.querySelectorAll('.move-dropdown').forEach(d => d.classList.remove('show'));
+    const el = document.getElementById(`move-${todoId}`);
+    if (!el) return;
+    const isShown = el.classList.contains('show');
+    if (isShown) {
+      el.classList.remove('show');
+      return;
+    }
+    // Position relative to the cat-tag inside this item
+    const item = document.querySelector(`[data-id="${todoId}"]`);
+    const catTag = item ? item.querySelector('.todo-cat-tag') : null;
+    if (catTag) {
+      const rect = catTag.getBoundingClientRect();
+      el.style.top = (rect.bottom + 4) + 'px';
+      el.style.left = rect.left + 'px';
+    }
+    el.classList.add('show');
+  }
+
+  function escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  /* ── Todo actions ── */
+  async function addTodo() {
+    const input = document.getElementById('todoInput');
+    const title = input.value.trim();
+    if (!title) { input.classList.add('shake'); setTimeout(() => input.classList.remove('shake'), 350); return; }
+    const categoryId = selectedAddCatId;
+    try {
+      const res = await fetch(API + '/todos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, categoryId })
+      });
+      const t = await res.json();
+      todos.unshift(t);
+      input.value = '';
+      renderCats();
+      render();
+    } catch (e) { console.error(e); }
+  }
+
+  async function toggleTodo(id) {
+    const t = todos.find(x => x.id === id);
+    if (!t) return;
+    t.completed = !t.completed;
+    try {
+      await fetch(`${API}/todos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed: t.completed })
+      });
+      renderCats();
+      render();
+    } catch (e) { console.error(e); }
+  }
+
+  async function deleteTodo(id) {
+    const el = document.querySelector(`[data-id="${id}"]`);
+    if (el) { el.classList.add('deleting'); await sleep(220); }
+    try {
+      await fetch(`${API}/todos/${id}`, { method: 'DELETE' });
+      todos = todos.filter(x => x.id !== id);
+      editingTodoId = null;
+      renderCats();
+      render();
+    } catch (e) { console.error(e); }
+  }
+
+  async function moveTodo(todoId, catId) {
+    try {
+      await fetch(`${API}/todos/${todoId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categoryId: catId })
+      });
+      const t = todos.find(x => x.id === todoId);
+      if (t) t.categoryId = catId;
+      renderCats();
+      render();
+    } catch (e) { console.error(e); }
+  }
+
+  function startEditTodo(id) {
+    editingTodoId = id;
+    render();
+    const inp = document.getElementById(`edit-todo-${id}`);
+    if (inp) { inp.focus(); inp.select(); }
+  }
+
+  async function saveTodoEdit(id) {
+    const inp = document.getElementById(`edit-todo-${id}`);
+    if (!inp) return;
+    const newTitle = inp.value.trim();
+    if (!newTitle) { inp.classList.add('shake'); setTimeout(() => inp.classList.remove('shake'), 350); return; }
+    const t = todos.find(x => x.id === id);
+    if (!t) return;
+    t.title = newTitle;
+    editingTodoId = null;
+    try {
+      await fetch(`${API}/todos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle })
+      });
+      render();
+    } catch (e) { console.error(e); }
+  }
+
+  function handleTodoEditKey(e, id) {
+    if (e.key === 'Enter') { e.preventDefault(); saveTodoEdit(id); }
+    if (e.key === 'Escape') { editingTodoId = null; render(); }
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  /* ── Category Modal ── */
+  function initIconGrid() {
+    const grid = document.getElementById('iconGrid');
+    grid.innerHTML = PRESET_ICONS.map(icon => `
+      <button class="icon-option${icon === selectedIcon ? ' selected' : ''}"
+              onclick="selectIcon('${icon}')">${icon}</button>
+    `).join('');
+  }
+
+  function selectIcon(icon) {
+    selectedIcon = icon;
+    document.querySelectorAll('.icon-option').forEach(opt => {
+      opt.classList.toggle('selected', opt.textContent === icon);
+    });
+  }
+
+  let pendingDeleteCatId = null;
+
+  function openAddCatModal() {
+    editingCatId = null;
+    selectedIcon = '📋';
+    document.getElementById('catModalTitle').textContent = '新增分类';
+    document.getElementById('catNameInput').value = '';
+    document.getElementById('saveCatBtn').textContent = '创建';
+    document.getElementById('delCatBtn').style.display = 'none';
+    document.getElementById('catModal').classList.add('show');
+    document.getElementById('catNameInput').focus();
+    initIconGrid();
+  }
+
+  function openEditCatModal(catId) {
+    const cat = categories.find(c => c.id === catId);
+    if (!cat) return;
+    editingCatId = catId;
+    selectedIcon = cat.icon;
+    document.getElementById('catModalTitle').textContent = '编辑分类';
+    document.getElementById('catNameInput').value = cat.name;
+    document.getElementById('saveCatBtn').textContent = '保存';
+    document.getElementById('delCatBtn').style.display = 'inline-flex';
+    document.getElementById('catModal').classList.add('show');
+    document.getElementById('catNameInput').focus();
+    initIconGrid();
+    // Pre-select current icon
+    setTimeout(() => {
+      document.querySelectorAll('.icon-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.textContent === cat.icon);
+      });
+    }, 0);
+  }
+
+  function closeCatModal() {
+    document.getElementById('catModal').classList.remove('show');
+  }
+
+  async function saveCatModal() {
+    const name = document.getElementById('catNameInput').value.trim();
+    if (!name) {
+      document.getElementById('catNameInput').classList.add('shake');
+      setTimeout(() => document.getElementById('catNameInput').classList.remove('shake'), 350);
+      return;
+    }
+    try {
+      if (editingCatId) {
+        // Update
+        const res = await fetch(`${API}/categories/${editingCatId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, icon: selectedIcon })
+        });
+        const updated = await res.json();
+        const idx = categories.findIndex(c => c.id === editingCatId);
+        if (idx !== -1) categories[idx] = updated;
+        // Update active cat title if needed
+        const activeCat = activeCatId ? categories.find(c => c.id === activeCatId) : null;
+        if (activeCat) {
+          document.getElementById('currentCatTitle').innerHTML = `${activeCat.icon} ${escHtml(activeCat.name)}`;
+        }
+      } else {
+        // Create
+        const res = await fetch(API + '/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, icon: selectedIcon })
+        });
+        const newCat = await res.json();
+        categories.push(newCat);
+      }
+      closeCatModal();
+      renderCats();
+      initCatPicker();
+    } catch (e) { console.error(e); }
+  }
+
+  function openDelCatConfirm(catId) {
+    const cat = categories.find(c => c.id === catId);
+    if (!cat) return;
+    pendingDeleteCatId = catId;
+    const todoCount = todos.filter(t => t.categoryId === catId).length;
+    const msg = todoCount > 0
+      ? `确定删除「${cat.icon} ${cat.name}」吗？该分类下 ${todoCount} 条待办也会一并删除，此操作不可撤销。`
+      : `确定删除「${cat.icon} ${cat.name}」吗？`;
+    document.getElementById('confirmMsg').textContent = msg;
+    document.getElementById('confirmModal').classList.add('show');
+  }
+
+  function closeConfirmModal() {
+    document.getElementById('confirmModal').classList.remove('show');
+    pendingDeleteCatId = null;
+  }
+
+  async function doDeleteCat() {
+    if (!pendingDeleteCatId) return;
+    const catId = pendingDeleteCatId;
+    closeConfirmModal();
+    try {
+      await fetch(`${API}/categories/${catId}`, { method: 'DELETE' });
+      categories = categories.filter(c => c.id !== catId);
+      todos = todos.filter(t => t.categoryId !== catId);
+      if (activeCatId === catId) activeCatId = null;
+      document.getElementById('currentCatTitle').innerHTML = '📋 全部';
+      renderCats();
+      initCatPicker();
+      render();
+    } catch (e) { console.error(e); }
+  }
+
+  /* ── Date format ── */
+  function formatDate(iso) {
+    const d = new Date(iso);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    if (isToday) return `今天 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const yd = new Date(now); yd.setDate(now.getDate() - 1);
+    if (d.toDateString() === yd.toDateString()) return `昨天 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return `${d.getMonth()+1}月${d.getDate()}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  function pad(n) { return n.toString().padStart(2, '0'); }
+</script>
+</body>
+</html>

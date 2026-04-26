@@ -1,0 +1,116 @@
+{
+  "todos": [
+    {
+      "id": "mofd3samx79hzevi9",
+      "title": "iphone11 pro 出售",
+      "completed": false,
+      "createdAt": "2026-04-26T06:03:10.462Z",
+      "categoryId": "cat_mofe1yiy0pt47"
+    },
+    {
+      "id": "mo9xbdtly7lfk1hu9",
+      "title": "观看电影《完美的日子》",
+      "completed": false,
+      "createdAt": "2026-04-22T10:42:20.217Z",
+      "categoryId": "cat_dianying"
+    },
+    {
+      "id": "e4b300f905f04ca5",
+      "title": "简化生活及数码产品，减轻包袱",
+      "completed": false,
+      "createdAt": "2026-04-14T04:30:00.000Z",
+      "categoryId": "cat_mofe1yiy0pt47"
+    },
+    {
+      "id": "mnmq5h0jrlbybhgls",
+      "title": "openclaw  笔记git 私有库保存",
+      "completed": true,
+      "createdAt": "2026-04-06T05:03:05.059Z",
+      "categoryId": "cat_mofeohqpzcxjp"
+    },
+    {
+      "id": "mnmq4zsjudql99rpv",
+      "title": "openclaw A股交易策略搭建",
+      "completed": true,
+      "createdAt": "2026-04-06T05:02:42.739Z",
+      "categoryId": "cat_mofeohqpzcxjp"
+    },
+    {
+      "id": "mnkimfzoranl08lqb",
+      "title": "openclaw 向量储存搭建",
+      "completed": true,
+      "createdAt": "2026-04-04T15:56:47.604Z",
+      "categoryId": "cat_mofeohqpzcxjp"
+    },
+    {
+      "id": "mnkiliwom2toqka93",
+      "title": "拯救者笔记本出售",
+      "completed": false,
+      "createdAt": "2026-04-04T15:56:04.728Z",
+      "categoryId": "cat_mofe1yiy0pt47"
+    },
+    {
+      "id": "mnkil0dmgu2izveem",
+      "title": "个人知识库搭建",
+      "completed": true,
+      "createdAt": "2026-04-04T15:55:40.714Z",
+      "categoryId": "cat_mofeohqpzcxjp"
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat_touzi",
+      "name": "投资",
+      "icon": "💰",
+      "order": 6
+    },
+    {
+      "id": "cat_dianshiju",
+      "name": "电视剧",
+      "icon": "🎬",
+      "order": 7
+    },
+    {
+      "id": "cat_dianying",
+      "name": "电影",
+      "icon": "🎥",
+      "order": 4
+    },
+    {
+      "id": "cat_shuji",
+      "name": "书籍",
+      "icon": "📚",
+      "order": 5
+    },
+    {
+      "id": "cat_youxi",
+      "name": "游戏",
+      "icon": "🎮",
+      "order": 1
+    },
+    {
+      "id": "cat_mofe1yiy0pt47",
+      "name": "生活",
+      "icon": "🎉",
+      "order": 0
+    },
+    {
+      "id": "cat_mofelrd77qh4n",
+      "name": "学习资源",
+      "icon": "📕",
+      "order": 2
+    },
+    {
+      "id": "cat_mofeohqpzcxjp",
+      "name": "openclaw",
+      "icon": "💻",
+      "order": 3
+    },
+    {
+      "id": "cat_moff8nlorwvz2",
+      "name": "其他",
+      "icon": "✔️",
+      "order": 8
+    }
+  ]
+}
