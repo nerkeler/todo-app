@@ -163,7 +163,7 @@ const server = http.createServer((req, res) => {
           const data = readData();
           const validCat = data.categories.find(c => c.id === categoryId);
           const usedCatId = validCat ? categoryId : 'cat_default';
-          const newTodo = { id: Date.now().toString(36) + Math.random().toString(36).substr(2, 9), title: title.trim(), completed: false, categoryId: usedCatId, createdAt: new Date().toISOString() };
+          const newTodo = { id: Date.now().toString(36) + Math.random().toString(36).substr(2, 9), title: title.trim(), completed: false, categoryId: usedCatId, progress: 0, createdAt: new Date().toISOString() };
           data.todos.unshift(newTodo); writeData(data);
           res.writeHead(201); res.end(JSON.stringify(newTodo));
         } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: 'Invalid JSON' })); }
@@ -186,6 +186,7 @@ const server = http.createServer((req, res) => {
           if (updates.title !== undefined) { if (!updates.title || !updates.title.trim()) { res.writeHead(400); res.end(JSON.stringify({ error: 'Title cannot be empty' })); return; } todo.title = updates.title.trim(); }
           if (updates.completed !== undefined) todo.completed = updates.completed;
           if (updates.categoryId !== undefined) todo.categoryId = updates.categoryId;
+          if (updates.progress !== undefined) todo.progress = Math.max(0, Math.min(100, Number(updates.progress)));
           writeData(data); res.writeHead(200); res.end(JSON.stringify(todo));
         } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: 'Invalid JSON' })); }
       }); return;

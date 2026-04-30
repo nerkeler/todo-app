@@ -1,11 +1,41 @@
 {
   "todos": [
     {
+      "id": "molqfkdherl6fv0sl",
+      "title": "接入小米mino大模型",
+      "completed": false,
+      "categoryId": "cat_mofeohqpzcxjp",
+      "createdAt": "2026-04-30T17:02:52.133Z"
+    },
+    {
+      "id": "molhhaneuz6fbw6jn",
+      "title": "杀人者报告",
+      "completed": false,
+      "categoryId": "cat_dianying",
+      "createdAt": "2026-04-30T12:52:16.298Z"
+    },
+    {
+      "id": "mofxiulrietwpgmgf",
+      "title": "士兵突击",
+      "completed": false,
+      "categoryId": "cat_dianshiju",
+      "createdAt": "2026-04-26T15:34:45.615Z",
+      "progress": 30
+    },
+    {
+      "id": "moftgp1mclefqzexa",
+      "title": "完美的日子",
+      "completed": false,
+      "categoryId": "cat_dianying",
+      "createdAt": "2026-04-26T13:41:06.634Z"
+    },
+    {
       "id": "e4b300f905f04ca5",
       "title": "简化生活及数码产品，减轻包袱",
       "completed": false,
       "createdAt": "2026-04-14T04:30:00.000Z",
-      "categoryId": "cat_mofe1yiy0pt47"
+      "categoryId": "cat_mofe1yiy0pt47",
+      "progress": 20
     },
     {
       "id": "mnmq5h0jrlbybhgls",
@@ -31,7 +61,7 @@
     {
       "id": "mnkiliwom2toqka93",
       "title": "拯救者笔记本出售",
-      "completed": false,
+      "completed": true,
       "createdAt": "2026-04-04T15:56:04.728Z",
       "categoryId": "cat_mofe1yiy0pt47"
     },
@@ -48,7 +78,7 @@
       "id": "cat_touzi",
       "name": "投资",
       "icon": "💰",
-      "order": 1
+      "order": 2
     },
     {
       "id": "cat_dianshiju",
@@ -60,7 +90,7 @@
       "id": "cat_dianying",
       "name": "电影",
       "icon": "🎥",
-      "order": 5
+      "order": 7
     },
     {
       "id": "cat_shuji",
@@ -72,37 +102,37 @@
       "id": "cat_youxi",
       "name": "游戏",
       "icon": "🎮",
-      "order": 7
+      "order": 8
     },
     {
       "id": "cat_mofe1yiy0pt47",
       "name": "生活",
       "icon": "🎉",
-      "order": 0
+      "order": 1
     },
     {
       "id": "cat_mofelrd77qh4n",
       "name": "学习资源",
       "icon": "📕",
-      "order": 2
+      "order": 3
     },
     {
       "id": "cat_mofeohqpzcxjp",
       "name": "openclaw",
       "icon": "💻",
-      "order": 3
+      "order": 5
     },
     {
       "id": "cat_moff8nlorwvz2",
       "name": "其他",
       "icon": "✔️",
-      "order": 8
+      "order": 9
     },
     {
       "id": "cat_mofjjo42w3p92",
       "name": "默认",
       "icon": "📋",
-      "order": 9
+      "order": 0
     }
   ]
 }

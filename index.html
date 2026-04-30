@@ -467,6 +467,52 @@
       color: var(--text-3);
     }
 
+    .modal-btn.cancel { background: var(--surface-hover); color: var(--text-2); }
+    .modal-btn.cancel:hover { background: var(--border); }
+    .modal-btn.primary { background: var(--primary); color: #fff; }
+    .modal-btn.primary:hover { background: var(--primary-dark); }
+
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: var(--accent); border-radius: 50%; cursor: pointer; }
+    input[type="range"] { -webkit-appearance: none; height: 5px; border-radius: 3px; background: var(--border); outline: none; }
+
+    .todo-progress-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 0 2px;
+      cursor: pointer;
+      padding: 2px 0;
+    }
+    .todo-progress-track {
+      flex: 1;
+      height: 5px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .todo-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-radius: 3px;
+      transition: width 0.4s ease;
+    }
+    .todo-progress-pct {
+      font-size: 0.78rem;
+      color: var(--accent);
+      font-weight: 600;
+      min-width: 32px;
+      text-align: right;
+    }
+    .todo-progress-add {
+      font-size: 0.78rem;
+      color: var(--text-3);
+      cursor: pointer;
+      padding: 1px 4px;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+    .todo-progress-add:hover { background: var(--border); color: var(--accent); }
+
     .todo-meta {
       display: flex;
       align-items: center;
@@ -831,6 +877,34 @@
   </div>
 </div>
 
+<!-- 进度编辑弹窗 -->
+<div class="modal-overlay" id="progressModal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="progressModalTitle">设置进度</span>
+      <button class="modal-close" onclick="closeProgressModal()">✕</button>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <input type="range" id="progressRange" min="0" max="100" value="0"
+          style="flex:1;cursor:pointer" oninput="syncProgressPct(this.value)">
+        <span id="progressRangePct" style="font-size:1.1rem;font-weight:700;color:var(--accent);min-width:44px;text-align:right">0%</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="modal-btn cancel" style="flex:1;min-width:56px" onclick="setProgressVal(0)">0%</button>
+        <button class="modal-btn" style="flex:1;min-width:56px" onclick="setProgressVal(25)">25%</button>
+        <button class="modal-btn" style="flex:1;min-width:56px" onclick="setProgressVal(50)">50%</button>
+        <button class="modal-btn" style="flex:1;min-width:56px" onclick="setProgressVal(75)">75%</button>
+        <button class="modal-btn" style="flex:1;min-width:56px" onclick="setProgressVal(100)">100%</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeProgressModal()">取消</button>
+      <button class="modal-btn primary" onclick="saveProgress()">保存</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const API = '/api';
   let categories = [];
@@ -838,6 +912,7 @@
   let activeCatId = null; // null = 全部
   let editingCatId = null;
   let editingTodoId = null;
+  let editingProgressTodoId = null;
   let selectedIcon = '📋';
   let selectedAddCatId = localStorage.getItem('lastUsedCatId') || 'cat_default';
   let defaultCatId = null; // resolved after categories load
@@ -1129,11 +1204,26 @@
       `;
     }
 
+    const progress = t.progress ?? 0
+    const showProgress = progress > 0
+
     return `
       <div class="todo-item${t.completed ? ' completed' : ''}" data-id="${t.id}">
         <div class="checkbox${t.completed ? ' checked' : ''}" onclick="toggleTodo('${t.id}')"></div>
         <div class="todo-body">
           <div class="todo-text" onclick="startEditTodo('${t.id}')">${escHtml(t.title)}</div>
+          ${showProgress ? `
+          <div class="todo-progress-row" onclick="event.stopPropagation(); openProgressModal('${t.id}')">
+            <div class="todo-progress-track">
+              <div class="todo-progress-fill" style="width:${progress}%"></div>
+            </div>
+            <span class="todo-progress-pct">${progress}%</span>
+          </div>
+          ` : `
+          <div class="todo-progress-row" onclick="event.stopPropagation(); openProgressModal('${t.id}')">
+            <span class="todo-progress-add">+ 添加进度</span>
+          </div>
+          `}
           <div class="todo-meta">
             <span class="todo-cat-tag" onclick="event.stopPropagation(); toggleMoveDropdown('${t.id}', event)">${catIcon} ${escHtml(catName)} ▼</span>
             <span class="todo-date">${dateStr}</span>
@@ -1293,6 +1383,47 @@
   function handleTodoEditKey(e, id) {
     if (e.key === 'Enter') { e.preventDefault(); saveTodoEdit(id); }
     if (e.key === 'Escape') { editingTodoId = null; render(); }
+  }
+
+  /* ── Progress Modal ── */
+  function openProgressModal(todoId) {
+    editingProgressTodoId = todoId
+    const t = todos.find(x => x.id === todoId)
+    const val = t?.progress ?? 0
+    document.getElementById('progressRange').value = val
+    document.getElementById('progressRangePct').textContent = val + '%'
+    document.getElementById('progressModalTitle').textContent = t ? `进度: ${t.title}` : '设置进度'
+    document.getElementById('progressModal').classList.add('show')
+  }
+
+  function syncProgressPct(val) {
+    document.getElementById('progressRangePct').textContent = val + '%'
+  }
+
+  function setProgressVal(val) {
+    document.getElementById('progressRange').value = val
+    syncProgressPct(val)
+  }
+
+  function closeProgressModal() {
+    document.getElementById('progressModal').classList.remove('show')
+    editingProgressTodoId = null
+  }
+
+  async function saveProgress() {
+    const val = parseInt(document.getElementById('progressRange').value, 10)
+    const id = editingProgressTodoId
+    closeProgressModal()
+    if (!id) return
+    try {
+      await fetch(`${API}/todos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ progress: val })
+      })
+      const t = todos.find(x => x.id === id)
+      if (t) { t.progress = val; render(); }
+    } catch (e) { console.error(e) }
   }
 
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
