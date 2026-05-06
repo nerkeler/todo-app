@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>我的待办</title>
+  <title>待办清单</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27><rect width=%2764%27 height=%2764%27 rx=%2712%27 fill=%27%2310b981%27/><rect x=%2714%27 y=%2722%27 width=%2736%27 height=%2730%27 rx=%274%27 fill=%27white%27/><rect x=%2720%27 y=%2728%27 width=%2724%27 height=%274%27 rx=%272%27 fill=%27%2310b981%27/><rect x=%2720%27 y=%2736%27 width=%2716%27 height=%274%27 rx=%272%27 fill=%27%2310b981%27/><rect x=%2720%27 y=%2744%27 width=%2720%27 height=%274%27 rx=%272%27 fill=%27%2310b981%27/></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -663,6 +664,13 @@
     }
     .modal-close:hover { background: var(--border); color: var(--text); }
 
+    /* ── Toggle Switch ── */
+    .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; inset: 0; background: var(--border); transition: 0.3s; border-radius: 24px; }
+    .slider:before { content: ''; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+    input:checked + .slider { background: var(--primary); }
+    input:checked + .slider:before { transform: translateX(20px); }
     .modal-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
     .modal-label { font-size: 0.82rem; color: var(--text-2); font-weight: 500; }
 
@@ -794,6 +802,7 @@
       </div>
       <div class="header-right">
         <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+        <button class="theme-toggle" id="settingsBtn" onclick="openSettingsModal()" title="邮件提醒设置">⚙️</button>
       </div>
     </div>
 
@@ -878,6 +887,73 @@
 </div>
 
 <!-- 进度编辑弹窗 -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-title">
+      <span>⚙️ 邮件提醒设置</span>
+      <button class="modal-close" onclick="closeSettingsModal()">✕</button>
+    </div>
+    <div class="modal-row">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div class="modal-label">启用邮件提醒</div>
+          <div style="font-size:0.75rem;color:var(--text-3);margin-top:2px">开启后将在每日设定时间检查并发送提醒邮件</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="emailEnabledToggle" onchange="saveSettings()">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-row">
+      <label class="modal-label">每日检查时间</label>
+      <input class="modal-input" type="time" id="checkTimeInput" value="09:00" onchange="saveSettings()" style="height:40px;padding:0 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:0.9rem;background:var(--bg);color:var(--text);">
+    </div>
+    <div class="modal-row">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="font-size:0.82rem;font-weight:500;color:var(--text-2)">SMTP状态</div>
+        <span id="smtpStatusBadge" style="font-size:0.75rem;padding:2px 8px;border-radius:10px;font-weight:600"></span>
+      </div>
+    </div>
+    <div style="font-size:0.75rem;color:var(--text-3);margin-top:8px;line-height:1.6">
+      SMTP账号密码从系统环境变量读取（安全）<br>
+      任务提醒邮件将发送到任务创建者邮箱或默认收件人
+    </div>
+    <button class="modal-btn primary" style="margin-top:16px;width:100%;height:40px;border:none;border-radius:var(--radius-sm);font-size:0.9rem;cursor:pointer" onclick="closeSettingsModal()">关闭</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reminderModal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="reminderModalTitle">🔔 任务提醒</span>
+      <button class="modal-close" onclick="closeReminderModal()">✕</button>
+    </div>
+    <div class="modal-row">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div class="modal-label" style="margin-bottom:0">启用提醒</div>
+        <label class="switch">
+          <input type="checkbox" id="reminderEnabledToggle" onchange="saveReminderSettings()">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-row">
+      <label class="modal-label">提醒时间</label>
+      <input class="modal-input" type="time" id="reminderTimeInput" value="09:00" style="height:40px;padding:0 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:0.9rem;background:var(--bg);color:var(--text);">
+    </div>
+    <div class="modal-row">
+      <label class="modal-label">接收邮箱</label>
+      <input class="modal-input" type="email" id="creatorEmailInput" placeholder="不填则使用默认收件人" style="height:40px;padding:0 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:0.9rem;background:var(--bg);color:var(--text);">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="modal-btn cancel" style="flex:1;height:38px;border:none;border-radius:var(--radius-sm);font-size:0.85rem;cursor:pointer" onclick="closeReminderModal()">取消</button>
+      <button class="modal-btn primary" style="flex:1;height:38px;border:none;border-radius:var(--radius-sm);font-size:0.85rem;cursor:pointer;background:var(--primary);color:#fff" onclick="saveReminderSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+
 <div class="modal-overlay" id="progressModal">
   <div class="modal">
     <div class="modal-title">
@@ -913,6 +989,8 @@
   let editingCatId = null;
   let editingTodoId = null;
   let editingProgressTodoId = null;
+  let editingReminderTodoId = null;
+  let settings = { emailEnabled: false, checkTime: '09:00', smtpReady: false };
   let selectedIcon = '📋';
   let selectedAddCatId = localStorage.getItem('lastUsedCatId') || 'cat_default';
   let defaultCatId = null; // resolved after categories load
@@ -963,6 +1041,73 @@
     setTheme(cur === 'dark' ? 'light' : 'dark');
   }
 
+  /* ── Settings Modal ── */
+  function openSettingsModal() {
+    document.getElementById('emailEnabledToggle').checked = settings.emailEnabled;
+    document.getElementById('checkTimeInput').value = settings.checkTime || '09:00';
+    const badge = document.getElementById('smtpStatusBadge');
+    if (settings.smtpReady) {
+      badge.textContent = '✅ 已配置';
+      badge.style.background = 'rgba(82,196,26,0.12)';
+      badge.style.color = '#52c41a';
+    } else {
+      badge.textContent = '❌ 未配置';
+      badge.style.background = 'rgba(255,85,85,0.12)';
+      badge.style.color = '#ff5555';
+    }
+    document.getElementById('settingsModal').classList.add('show');
+  }
+  function closeSettingsModal() {
+    document.getElementById('settingsModal').classList.remove('show');
+  }
+  async function saveSettings() {
+    const emailEnabled = document.getElementById('emailEnabledToggle').checked;
+    const checkTime = document.getElementById('checkTimeInput').value;
+    try {
+      const res = await fetch(API + '/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailEnabled, checkTime })
+      });
+      const updated = await res.json();
+      settings = updated;
+    } catch (e) { console.error(e); }
+  }
+
+  /* ── Reminder Modal ── */
+  function openReminderModal(todoId) {
+    editingReminderTodoId = todoId;
+    const t = todos.find(t => t.id === todoId);
+    if (!t) return;
+    document.getElementById('reminderEnabledToggle').checked = t.reminderEnabled || false;
+    document.getElementById('reminderTimeInput').value = t.reminderTime || '09:00';
+    document.getElementById('creatorEmailInput').value = t.creatorEmail || '';
+    document.getElementById('reminderModalTitle').textContent = '🔔 ' + (t.title.length > 12 ? t.title.slice(0, 12) + '…' : t.title);
+    document.getElementById('reminderModal').classList.add('show');
+  }
+  function closeReminderModal() {
+    document.getElementById('reminderModal').classList.remove('show');
+    editingReminderTodoId = null;
+  }
+  async function saveReminderSettings() {
+    if (!editingReminderTodoId) return;
+    const reminderEnabled = document.getElementById('reminderEnabledToggle').checked;
+    const reminderTime = document.getElementById('reminderTimeInput').value;
+    const creatorEmail = document.getElementById('creatorEmailInput').value.trim();
+    try {
+      const res = await fetch(API + '/todos/' + editingReminderTodoId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reminderEnabled, reminderTime, creatorEmail })
+      });
+      const updated = await res.json();
+      const idx = todos.findIndex(t => t.id === editingReminderTodoId);
+      if (idx !== -1) todos[idx] = updated;
+      closeReminderModal();
+    } catch (e) { console.error(e); }
+  }
+
+
   /* ── Sidebar ── */
   function openSidebar() { document.getElementById('sidebar').classList.add('open'); }
   function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); }
@@ -971,12 +1116,15 @@
   async function loadData() {
     try {
       const ts = Date.now();
-      const [catsRes, todosRes] = await Promise.all([
+      const [catsRes, todosRes, settingsRes] = await Promise.all([
         fetch(API + '/categories?_=' + ts),
-        fetch(API + '/todos?_=' + ts)
+        fetch(API + '/todos?_=' + ts),
+        fetch(API + '/settings?_=' + ts)
       ]);
       const newCats = await catsRes.json();
       const newTodos = await todosRes.json();
+      const newSettings = await settingsRes.json();
+      settings = newSettings;
       categories.splice(0, categories.length, ...newCats);
       todos.splice(0, todos.length, ...newTodos);
       // Resolve default category id
@@ -1230,6 +1378,7 @@
           </div>
         </div>
         <div class="todo-actions">
+          ${!t.completed ? `<button class="todo-act-btn" onclick="openReminderModal('${t.id}')" title="邮件提醒" style="${t.reminderEnabled ? 'color:var(--primary)' : ''}">${t.reminderEnabled ? '🔔' : '🔕'}</button>` : ''}
           <button class="todo-act-btn" onclick="startEditTodo('${t.id}')" title="编辑">✎</button>
           <button class="todo-act-btn del" onclick="deleteTodo('${t.id}')" title="删除">✕</button>
         </div>

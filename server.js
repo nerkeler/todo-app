@@ -1,54 +1,39 @@
+/**
+ * TODO App Server - 纯 Node.js 实现
+ * SQLite: sql.js (WASM)
+ * Email: nodemailer
+ */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
 
 const PORT = 8238;
-const DATA_FILE = path.join(__dirname, 'data.json');
+const DB_PY = null; // 不再调用 Python
 
-const DEFAULT_CATEGORIES = [
-  { id: 'cat_default',   name: '默认',   icon: '📋', order: 0 },
-  { id: 'cat_touzi',     name: '投资',   icon: '💰', order: 1 },
-  { id: 'cat_dianshiju', name: '电视剧', icon: '🎬', order: 2 },
-  { id: 'cat_dianying',  name: '电影',   icon: '🎥', order: 3 },
-  { id: 'cat_shuji',     name: '书籍',   icon: '📚', order: 4 },
-  { id: 'cat_youxi',     name: '游戏',   icon: '🎮', order: 5 }
-];
+// ── 加载模块 ─────────────────────────────────────────────
+const { initDB, closeDB, saveDB,
+  getCategories, createCategory, updateCategory, deleteCategory, reorderCategories,
+  getTodos, createTodo, updateTodo, deleteTodo,
+  getSettings, saveSettings, migrateFromJSON } = require('./sqlite.js');
+const { sendEmail, DEFAULT_TO } = require('./email.js');
 
-function readData() {
-  try {
-    if (!fs.existsSync(DATA_FILE)) {
-      return { categories: DEFAULT_CATEGORIES, todos: [] };
-    }
-    const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
-    // 兼容旧数据（无 categories 字段）
-    if (!data.categories || !Array.isArray(data.categories)) {
-      data.categories = DEFAULT_CATEGORIES;
-    }
-    // 旧待办没有 categoryId，补上默认分类
-    if (data.todos && Array.isArray(data.todos)) {
-      data.todos.forEach(t => { if (!t.categoryId) t.categoryId = 'cat_default'; });
-    }
-    return data;
-  } catch (e) {
-    return { categories: DEFAULT_CATEGORIES, todos: [] };
-  }
-}
+// ── 环境变量加载（读取 /etc/environment）──────────────────
+fs.readFileSync('/etc/environment', 'utf-8').split('\n').forEach(line => {
+  const m = line.match(/^([^=]+)=(.*)$/);
+  if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+});
 
-function writeData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-}
-
-const MIME_TYPES = {
+// ── MIME 类型 ────────────────────────────────────────────
+const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.svg': 'image/svg+xml',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml',
 };
 
+// ── 预设图标 ─────────────────────────────────────────────
 const PRESET_ICONS = [
   '📋','📌','📍','💰','💎','💳','🎬','🎥','🎞️','📺',
   '📚','📖','📕','🎮','🕹️','🎯','⚽','🏀','🎸','🎨',
@@ -57,159 +42,220 @@ const PRESET_ICONS = [
   '🎁','⭐','🔥','💡','⚡','🎉','🎊','👀','✔️','❌',
   '🗑️','✏️','📝','📧','🛒','🎒','🏋️','🧗','🚴','🏊',
   '🎵','🎤','📷','🖼️','🌅','🏞️','🌺','🍀','🌻','🌹',
-  '🍎','🍕','🎂','🍦','🧃','🍷','🏨','🛵'
+  '🍎','🍕','🎂','🍦','🧃','🍷','🏨','🛵',
 ];
 
-const server = http.createServer((req, res) => {
+// ── JSON 响应工具 ────────────────────────────────────────
+const jsonRes = (res, data, code = 200) => {
+  res.writeHead(code, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(data));
+};
+
+// ── HTTP 服务器 ──────────────────────────────────────────
+const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
-  const parsedUrl = url.parse(req.url, true);
-  const pathname = parsedUrl.pathname;
+  const parsed = url.parse(req.url, true);
+  const pathname = parsed.pathname;
+  const jsonResR = (data, code = 200) => jsonRes(res, data, code);
+  const withBody = async (callback) => {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', async () => {
+      try { await callback(JSON.parse(body)); }
+      catch (e) { jsonResR({ error: 'Invalid JSON' }, 400); }
+    });
+  };
 
-  // /api/categories
-  if (pathname === '/api/categories') {
-    res.setHeader('Content-Type', 'application/json');
+  // ── GET /api/settings ─────────────────────────────────
+  if (pathname === '/api/settings' && req.method === 'GET') {
+    try {
+      const s = getSettings();
+      jsonResR({ ...s, smtpReady: !!(process.env.TODO_SMTP_USER && process.env.TODO_SMTP_PASS) });
+    } catch (e) { jsonResR({ error: e.message }, 500); }
+    return;
+  }
+
+  // ── PUT /api/settings ──────────────────────────────────
+  if (pathname === '/api/settings' && req.method === 'PUT') {
+    withBody(async ({ emailEnabled, checkTime }) => {
+      try {
+        const s = saveSettings(!!emailEnabled, checkTime || '09:00');
+        if (s.emailEnabled) startCron(); else stopCron();
+        jsonResR({ ...s, smtpReady: !!(process.env.TODO_SMTP_USER && process.env.TODO_SMTP_PASS) });
+      } catch (e) { jsonResR({ error: e.message }, 500); }
+    });
+    return;
+  }
+
+  // ── GET /api/icons ─────────────────────────────────────
+  if (pathname === '/api/icons' && req.method === 'GET') {
+    jsonResR(PRESET_ICONS); return;
+  }
+
+  // ── GET /api/categories ────────────────────────────────
+  if (pathname === '/api/categories' && req.method === 'GET') {
+    try {
+      const cats = getCategories();
+      cats.sort((a, b) => a.sort_order - b.sort_order);
+      jsonResR(cats);
+    } catch (e) { jsonResR({ error: e.message }, 500); }
+    return;
+  }
+
+  // ── POST /api/categories ──────────────────────────────
+  if (pathname === '/api/categories' && req.method === 'POST') {
+    withBody(async ({ name, icon }) => {
+      if (!name?.trim()) { jsonResR({ error: '名称不能为空' }, 400); return; }
+      try { jsonResR(createCategory(name.trim(), icon || '📋')); }
+      catch (e) { jsonResR({ error: e.message }, 500); }
+    });
+    return;
+  }
+
+  // ── PATCH /api/categories/reorder ──────────────────────
+  if (pathname === '/api/categories/reorder' && req.method === 'PATCH') {
+    withBody(async ({ order }) => {
+      if (!Array.isArray(order)) { jsonResR({ error: 'order must be array' }, 400); return; }
+      try { reorderCategories(order); jsonResR({ success: true }); }
+      catch (e) { jsonResR({ error: e.message }, 500); }
+    });
+    return;
+  }
+
+  // ── /api/categories/:id ───────────────────────────────
+  const catMatch = pathname.match(/^\/api\/categories\/([^/]+)$/);
+  if (catMatch) {
+    const id = catMatch[1];
+    if (req.method === 'PATCH') {
+      withBody(async ({ name, icon }) => {
+        try { jsonResR(updateCategory(id, name, icon)); }
+        catch (e) { jsonResR({ error: e.message }, 500); }
+      });
+      return;
+    }
+    if (req.method === 'DELETE') {
+      try { deleteCategory(id); jsonResR({ success: true }); }
+      catch (e) { jsonResR({ error: e.message }, 500); }
+      return;
+    }
+    jsonResR({ error: 'Not found' }, 404); return;
+  }
+
+  // ── GET/POST /api/todos ───────────────────────────────
+  if (pathname === '/api/todos') {
     if (req.method === 'GET') {
-      const data = readData();
-      res.writeHead(200);
-      res.end(JSON.stringify(data.categories.sort((a, b) => a.order - b.order)));
+      const catId = parsed.query.categoryId;
+      try { jsonResR(getTodos(catId || null)); }
+      catch (e) { jsonResR({ error: e.message }, 500); }
       return;
     }
     if (req.method === 'POST') {
-      let body = ''; req.on('data', c => body += c); req.on('end', () => {
-        try {
-          const { name, icon } = JSON.parse(body);
-          if (!name || !name.trim()) { res.writeHead(400); res.end(JSON.stringify({ error: '名称不能为空' })); return; }
-          const data = readData();
-          const newCat = { id: 'cat_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5), name: name.trim(), icon: icon || '📋', order: data.categories.length };
-          data.categories.push(newCat); writeData(data);
-          res.writeHead(201); res.end(JSON.stringify(newCat));
-        } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: 'Invalid JSON' })); }
-      }); return;
+      withBody(async ({ title, categoryId }) => {
+        if (!title?.trim()) { jsonResR({ error: 'Title is required' }, 400); return; }
+        try { jsonResR(createTodo(title.trim(), categoryId || 'cat_default')); }
+        catch (e) { jsonResR({ error: e.message }, 500); }
+      });
+      return;
     }
-    res.writeHead(404); res.end(JSON.stringify({ error: 'Not found' })); return;
+    jsonResR({ error: 'Not found' }, 404); return;
   }
 
-  // /api/categories/reorder — 调整分类顺序
-  if (pathname === '/api/categories/reorder' && req.method === 'PATCH') {
-    res.setHeader('Content-Type', 'application/json');
-    let body = ''; req.on('data', c => body += c); req.on('end', () => {
-      try {
-        const { order } = JSON.parse(body); // order = [id1, id2, ...]
-        if (!Array.isArray(order)) { res.writeHead(400); res.end(JSON.stringify({ error: 'order must be array' })); return; }
-        const data = readData();
-        order.forEach((id, idx) => {
-          const cat = data.categories.find(c => c.id === id);
-          if (cat) cat.order = idx;
-        });
-        writeData(data);
-        res.writeHead(200); res.end(JSON.stringify({ success: true }));
-      } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: 'Invalid JSON' })); }
-    }); return;
-  }
-
-  // /api/categories/:id
-  const catMatch = pathname.match(/^\/api\/categories\/([^/]+)$/);
-  if (catMatch) {
-    const catId = catMatch[1]; res.setHeader('Content-Type', 'application/json');
-    if (req.method === 'PATCH') {
-      let body = ''; req.on('data', c => body += c); req.on('end', () => {
-        try {
-          const { name, icon } = JSON.parse(body);
-          const data = readData();
-          const cat = data.categories.find(c => c.id === catId);
-          if (!cat) { res.writeHead(404); res.end(JSON.stringify({ error: '分类不存在' })); return; }
-          if (name !== undefined) { if (!name.trim()) { res.writeHead(400); res.end(JSON.stringify({ error: '名称不能为空' })); return; } cat.name = name.trim(); }
-          if (icon !== undefined) cat.icon = icon;
-          writeData(data); res.writeHead(200); res.end(JSON.stringify(cat));
-        } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: 'Invalid JSON' })); }
-      }); return;
-    }
-    if (req.method === 'DELETE') {
-      const data = readData();
-      if (!data.categories.find(c => c.id === catId)) { res.writeHead(404); res.end(JSON.stringify({ error: '分类不存在' })); return; }
-      data.todos = data.todos.filter(t => t.categoryId !== catId);
-      data.categories = data.categories.filter(c => c.id !== catId);
-      writeData(data); res.writeHead(200); res.end(JSON.stringify({ success: true })); return;
-    }
-    res.writeHead(404); res.end(JSON.stringify({ error: 'Not found' })); return;
-  }
-
-  // /api/icons
-  if (pathname === '/api/icons') {
-    res.setHeader('Content-Type', 'application/json');
-    res.writeHead(200); res.end(JSON.stringify(PRESET_ICONS)); return;
-  }
-
-  // /api/todos
-  if (pathname === '/api/todos') {
-    res.setHeader('Content-Type', 'application/json');
-    if (req.method === 'GET') {
-      const data = readData();
-      let todos = data.todos;
-      const catId = parsedUrl.query.categoryId;
-      if (catId) todos = todos.filter(t => t.categoryId === catId);
-      res.writeHead(200); res.end(JSON.stringify(todos.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))); return;
-    }
-    if (req.method === 'POST') {
-      let body = ''; req.on('data', c => body += c); req.on('end', () => {
-        try {
-          const { title, categoryId } = JSON.parse(body);
-          if (!title || !title.trim()) { res.writeHead(400); res.end(JSON.stringify({ error: 'Title is required' })); return; }
-          const data = readData();
-          const validCat = data.categories.find(c => c.id === categoryId);
-          const usedCatId = validCat ? categoryId : 'cat_default';
-          const newTodo = { id: Date.now().toString(36) + Math.random().toString(36).substr(2, 9), title: title.trim(), completed: false, categoryId: usedCatId, progress: 0, createdAt: new Date().toISOString() };
-          data.todos.unshift(newTodo); writeData(data);
-          res.writeHead(201); res.end(JSON.stringify(newTodo));
-        } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: 'Invalid JSON' })); }
-      }); return;
-    }
-    res.writeHead(404); res.end(JSON.stringify({ error: 'Not found' })); return;
-  }
-
-  // /api/todos/:id
+  // ── /api/todos/:id ────────────────────────────────────
   const todoMatch = pathname.match(/^\/api\/todos\/([^/]+)$/);
   if (todoMatch) {
-    const todoId = todoMatch[1]; res.setHeader('Content-Type', 'application/json');
+    const id = todoMatch[1];
     if (req.method === 'PATCH') {
-      let body = ''; req.on('data', c => body += c); req.on('end', () => {
+      withBody(async (updates) => {
         try {
-          const updates = JSON.parse(body);
-          const data = readData();
-          const todo = data.todos.find(t => t.id === todoId);
-          if (!todo) { res.writeHead(404); res.end(JSON.stringify({ error: 'Todo not found' })); return; }
-          if (updates.title !== undefined) { if (!updates.title || !updates.title.trim()) { res.writeHead(400); res.end(JSON.stringify({ error: 'Title cannot be empty' })); return; } todo.title = updates.title.trim(); }
-          if (updates.completed !== undefined) todo.completed = updates.completed;
-          if (updates.categoryId !== undefined) todo.categoryId = updates.categoryId;
-          if (updates.progress !== undefined) todo.progress = Math.max(0, Math.min(100, Number(updates.progress)));
-          writeData(data); res.writeHead(200); res.end(JSON.stringify(todo));
-        } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: 'Invalid JSON' })); }
-      }); return;
+          const kw = {};
+          if (updates.title !== undefined) kw.title = updates.title.trim();
+          if (updates.completed !== undefined) kw.completed = updates.completed;
+          if (updates.categoryId !== undefined) kw.categoryId = updates.categoryId;
+          if (updates.progress !== undefined) kw.progress = updates.progress;
+          if (updates.reminderEnabled !== undefined) kw.reminderEnabled = updates.reminderEnabled;
+          if (updates.reminderTime !== undefined) kw.reminderTime = updates.reminderTime;
+          if (updates.creatorEmail !== undefined) kw.creatorEmail = updates.creatorEmail;
+          const result = updateTodo(id, kw);
+          if (result) jsonResR(result);
+          else jsonResR({ error: 'not found' }, 404);
+        } catch (e) { jsonResR({ error: e.message }, 500); }
+      });
+      return;
     }
     if (req.method === 'DELETE') {
-      const data = readData();
-      const idx = data.todos.findIndex(t => t.id === todoId);
-      if (idx === -1) { res.writeHead(404); res.end(JSON.stringify({ error: 'Todo not found' })); return; }
-      data.todos.splice(idx, 1); writeData(data);
-      res.writeHead(200); res.end(JSON.stringify({ success: true })); return;
+      try { deleteTodo(id); jsonResR({ success: true }); }
+      catch (e) { jsonResR({ error: e.message }, 500); }
+      return;
     }
-    res.writeHead(404); res.end(JSON.stringify({ error: 'Not found' })); return;
+    jsonResR({ error: 'Not found' }, 404); return;
   }
 
-  // Static files
+  // ── 静态文件 ─────────────────────────────────────────
   let filePath = pathname === '/' ? '/index.html' : pathname;
   filePath = path.join(__dirname, filePath);
   const ext = path.extname(filePath);
-  const mimeType = MIME_TYPES[ext] || 'text/plain';
+  const mime = MIME[ext] || 'text/plain';
   fs.readFile(filePath, (err, content) => {
     if (err) { res.writeHead(404); res.end('Not found'); return; }
-    res.writeHead(200, { 'Content-Type': mimeType }); res.end(content);
+    res.writeHead(200, { 'Content-Type': mime }); res.end(content);
   });
 });
 
-server.listen(PORT, '0.0.0.0', () => { console.log(`TODO App running on ${PORT}`); });
+// ── Cron（每分钟检查任务提醒）────────────────────────────
+let cronTimer = null;
+
+function stopCron() {
+  if (cronTimer) { clearInterval(cronTimer); cronTimer = null; console.log('[CRON] stopped'); }
+}
+
+function startCron() {
+  stopCron();
+  cronTimer = setInterval(async () => {
+    try {
+      const s = getSettings();
+      if (!s.emailEnabled) return;
+      const now = new Date();
+      const curTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+      const todos = getTodos();
+      for (const todo of todos) {
+        if (!todo.reminder_enabled || !todo.reminder_time) continue;
+        if (todo.reminder_time !== curTime) continue;
+        const recipient = todo.creator_email || DEFAULT_TO;
+        if (!recipient) continue;
+        try {
+          await sendEmail(recipient, `📋 任务提醒：${todo.title}`,
+            `您有一个待办任务还未完成：\n\n${todo.title}\n\n请及时处理。`);
+          console.log(`[REMINDER] Sent: ${todo.title}`);
+        } catch (e) {
+          console.error(`[REMINDER] Failed: ${e.message}`);
+        }
+      }
+    } catch (e) { console.error('[CRON] error:', e.message); }
+  }, 60 * 1000);
+  console.log('[CRON] started');
+}
+
+// ── 启动 ─────────────────────────────────────────────────
+async function bootstrap() {
+  try {
+    await initDB();
+    console.log('[TODO] SQLite ready:', path.join(__dirname, 'todo.db'));
+    const s = getSettings();
+    const smtpReady = !!(process.env.TODO_SMTP_USER && process.env.TODO_SMTP_PASS);
+    console.log(`[TODO] SMTP: ${smtpReady}, emailEnabled: ${s.emailEnabled}`);
+    if (s.emailEnabled && smtpReady) startCron();
+  } catch (e) {
+    console.error('[TODO] Bootstrap error:', e.message);
+    process.exit(1);
+  }
+}
+
+bootstrap();
+server.listen(PORT, '0.0.0.0', () => console.log(`TODO App → http://localhost:${PORT}`));
+
+process.on('SIGTERM', () => { closeDB(); process.exit(0); });
+process.on('SIGINT',  () => { closeDB(); process.exit(0); });
