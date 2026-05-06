@@ -542,6 +542,26 @@
       font-size: 0.72rem;
       color: var(--text-3);
     }
+    .today-badge {
+      font-size: 0.68rem;
+      color: #fff;
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .period-badge {
+      font-size: 0.68rem;
+      color: #fff;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .period-badge.today { background: linear-gradient(135deg, #f97316, #ea580c); }
+    .period-badge.week  { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+    .period-badge.month { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
 
     /* Todo actions */
     .todo-actions {
@@ -1333,6 +1353,19 @@
     const catIcon = cat ? cat.icon : '📋';
     const catName = cat ? cat.name : '默认';
     const dateStr = formatDate(t.createdAt);
+    const created = new Date(t.createdAt);
+    const now = new Date();
+    const todayMs = now.setHours(0,0,0,0);
+    const periodBadge = (() => {
+      if (!t.completed) {
+        const diff = (todayMs - created.setHours(0,0,0,0)) / 86400000;
+        if (diff === 0) return '<span class="period-badge today">📅 今日</span>';
+        if (diff > 0 && diff <= 3) return '<span class="period-badge week">📆 近3日</span>';
+        if (diff > 3 && diff <= 7) return '<span class="period-badge week">📆 本周</span>';
+        if (diff > 7 && diff <= 30) return '<span class="period-badge month">📅 近1月</span>';
+      }
+      return '';
+    })();
 
     if (isEditing) {
       return `
@@ -1373,6 +1406,7 @@
           </div>
           `}
           <div class="todo-meta">
+            ${periodBadge}
             <span class="todo-cat-tag" onclick="event.stopPropagation(); toggleMoveDropdown('${t.id}', event)">${catIcon} ${escHtml(catName)} ▼</span>
             <span class="todo-date">${dateStr}</span>
           </div>
